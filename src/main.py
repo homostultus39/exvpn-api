@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from src.api.v1.auth.router import router as auth_router
+from src.api.v1.clients.router import router as clients_router
 from src.api.v1.server.router import router as server_router
 from src.database.management.operations.user import get_user_by_username, create_user
 from src.database.connection import init_database, session_engine
@@ -57,6 +58,7 @@ app = FastAPI(
 
 app.include_router(auth_router, prefix="/auth", tags=["Authorization"])
 app.include_router(server_router, prefix="/server", tags=["Server"])
+app.include_router(clients_router, prefix="/clients", tags=["Clients"])
 
 
 @app.get("/health", tags=["Health"])

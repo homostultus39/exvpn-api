@@ -2,8 +2,10 @@ from typing import Annotated
 
 from fastapi import Depends
 
+from src.minio.client import MinIOClient, get_minio_client
 from src.services.awg_configurator import AWGService
 from src.services.client_configurator import ConfigService
+from src.services.client_service import ClientService
 from src.services.container_manager import DockerService
 from src.services.docker_client import get_docker_client
 from src.services.host_files import HostService
@@ -43,3 +45,23 @@ async def get_awg_service(
 def get_config_service() -> ConfigService:
     """Get Config service for generating client configs"""
     return ConfigService()
+
+
+def get_minio_service() -> MinIOClient:
+    """Get MinIO client"""
+    return get_minio_client()
+
+
+async def get_client_service(
+    awg_service: Annotated[AWGService, Depends(get_awg_service)],
+    config_service: Annotated[ConfigService, Depends(get_config_service)],
+    key_service: Annotated[KeyService, Depends(get_key_service)],
+    minio_client: Annotated[MinIOClient, Depends(get_minio_service)]
+) -> ClientService:
+    """Get Client service with all dependencies"""
+    return ClientService(
+        awg_service=awg_service,
+        config_service=config_service,
+        key_service=key_service,
+        minio_client=minio_client
+    )
