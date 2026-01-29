@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
+import inspect
 
 import aiofiles
 import aiodocker
@@ -65,14 +66,7 @@ class HostService:
             )
 
             output = exec_instance.start(detach=False)
-
-            stdout_data = b""
-            stderr_data = b""
-            async for msg in output:
-                if msg.stream == 1:  # stdout
-                    stdout_data += msg.data
-                elif msg.stream == 2:  # stderr
-                    stderr_data += msg.data
+            stdout_data, stderr_data = await self._collect_stream_output(output)
 
             inspect = await exec_instance.inspect()
             exit_code = inspect.get("ExitCode", 0)
@@ -109,15 +103,77 @@ class HostService:
 
             await container.wait()
             logs = container.log(stdout=True, stderr=True)
+            if inspect.isawaitable(logs):
+                logs = await logs
+            output = await self._collect_logs_output(logs)
+            return 0, output, ""
 
+        except aiodocker.exceptions.DockerError as exc:
+            raise HostServiceError(str(exc)) from exc
+
+    async def _collect_stream_output(self, stream: object) -> tuple[bytes, bytes]:
+        stdout_data = b""
+        stderr_data = b""
+
+        if hasattr(stream, "__aiter__"):
+            async for msg in stream:
+                if getattr(msg, "stream", None) == 1:
+                    stdout_data += msg.data
+                elif getattr(msg, "stream", None) == 2:
+                    stderr_data += msg.data
+            return stdout_data, stderr_data
+
+        read_out = getattr(stream, "read_out", None)
+        read_err = getattr(stream, "read_err", None)
+        if callable(read_out) or callable(read_err):
+            while True:
+                out_chunk = await read_out() if callable(read_out) else b""
+                err_chunk = await read_err() if callable(read_err) else b""
+                if not out_chunk and not err_chunk:
+                    break
+                stdout_data += out_chunk or b""
+                stderr_data += err_chunk or b""
+            return stdout_data, stderr_data
+
+        read_any = getattr(stream, "read", None)
+        if callable(read_any):
+            while True:
+                chunk = await read_any()
+                if not chunk:
+                    break
+                stdout_data += chunk
+            return stdout_data, stderr_data
+
+        raise HostServiceError("Unsupported stream type returned from Docker exec")
+
+    async def _collect_logs_output(self, logs: object) -> str:
+        if isinstance(logs, (list, tuple)):
+            return "".join(
+                msg.decode("utf-8", errors="replace") if isinstance(msg, (bytes, bytearray)) else str(msg)
+                for msg in logs
+            )
+
+        if hasattr(logs, "__aiter__"):
             output = ""
             async for msg in logs:
                 if isinstance(msg, (bytes, bytearray)):
                     output += msg.decode("utf-8", errors="replace")
                 else:
                     output += str(msg)
-            return 0, output, ""
+            return output
 
-        except aiodocker.exceptions.DockerError as exc:
-            raise HostServiceError(str(exc)) from exc
+        read_any = getattr(logs, "read", None)
+        if callable(read_any):
+            output = ""
+            while True:
+                chunk = await read_any()
+                if not chunk:
+                    break
+                if isinstance(chunk, (bytes, bytearray)):
+                    output += chunk.decode("utf-8", errors="replace")
+                else:
+                    output += str(chunk)
+            return output
+
+        return str(logs)
 

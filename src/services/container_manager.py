@@ -82,14 +82,13 @@ class DockerService:
     async def get_container_logs(self, name: str, tail: int = 100) -> str:
         try:
             container = await self._client.containers.get(name)
-            logs = container.log(stdout=True, stderr=True, tail=tail)
-            output = ""
-            async for msg in logs:
-                if isinstance(msg, (bytes, bytearray)):
-                    output += msg.decode("utf-8", errors="replace")
-                else:
-                    output += str(msg)
-            return output
+            logs = await container.log(stdout=True, stderr=True, tail=tail)
+            if isinstance(logs, (list, tuple)):
+                return "".join(
+                    msg.decode("utf-8", errors="replace") if isinstance(msg, (bytes, bytearray)) else str(msg)
+                    for msg in logs
+                )
+            return str(logs)
         except aiodocker.exceptions.DockerError as exc:
             if exc.status == 404:
                 raise ContainerNotFoundError(name) from exc
