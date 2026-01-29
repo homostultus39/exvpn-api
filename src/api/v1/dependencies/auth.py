@@ -7,9 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1.auth.exception import AuthenticationError, AuthorizationError
-from src.utils.security import decode_token, verify_token_type
 from src.database.connection import get_session
 from src.database.models import User
+from src.utils.security import decode_token, verify_token_type
 
 security = HTTPBearer()
 
@@ -18,6 +18,7 @@ async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
     session: Annotated[AsyncSession, Depends(get_session)]
 ) -> User:
+    """Get current authenticated user from JWT token"""
     token = credentials.credentials
     payload = decode_token(token)
     verify_token_type(payload, "access")
@@ -43,6 +44,7 @@ async def get_current_user(
 async def get_current_active_user(
     current_user: Annotated[User, Depends(get_current_user)]
 ) -> User:
+    """Get current active user (checks is_active flag)"""
     if not current_user.is_active:
         raise AuthorizationError("User is inactive")
     return current_user

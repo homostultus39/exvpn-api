@@ -3,9 +3,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from src.api.v1.auth.router import router as auth_router
+from src.api.v1.server.router import router as server_router
 from src.database.management.operations.user import get_user_by_username, create_user
 from src.database.connection import init_database, session_engine
 from src.minio.client import get_minio_client
+from src.services.docker_client import close_docker_client
 from src.utils.settings import get_settings
 
 
@@ -13,6 +15,7 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Startup
     minio_client = get_minio_client()
     minio_client.ensure_bucket_exists()
     await init_database()
@@ -37,6 +40,10 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    # Shutdown
+    await close_docker_client()
+    print("Docker client closed")
+
 
 app = FastAPI(
     title=settings.app_name,
@@ -49,6 +56,7 @@ app = FastAPI(
 )
 
 app.include_router(auth_router, prefix="/auth", tags=["Authorization"])
+app.include_router(server_router, prefix="/server", tags=["Server"])
 
 
 @app.get("/health", tags=["Health"])

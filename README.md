@@ -1,6 +1,6 @@
 # ExVPN - синоним к слову надежность
 
-API для управления AmneziaWG протоколом на базе FastAPI.
+ExVPN API для управления AmneziaWG протоколом на базе FastAPI.
 
 ## Структура проекта
 
@@ -8,11 +8,9 @@ API для управления AmneziaWG протоколом на базе Fas
 exvpn-api/
 ├── src/
 │   ├── api/v1/          # API endpoints
-│   ├── core/            # Безопасность, исключения
 │   ├── database/        # Модели БД и подключение
 │   ├── redis/           # Redis клиент
 │   ├── minio/           # MinIO клиент
-│   ├── schemas/         # Pydantic схемы
 │   ├── services/        # Бизнес-логика
 │   └── utils/           # Утилиты и настройки
 ├── migrations/          # Alembic миграции
@@ -48,7 +46,19 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"  # для SECRET_KE
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
-### 3. Запуск через Docker Compose
+### 3. Создание необходимых директорий
+
+Перед запуском необходимо создать директорию для конфигурационных файлов AmneziaWG на хосте:
+
+```bash
+sudo mkdir -p /opt/amnezia/awg
+sudo chown -R $USER:$USER /opt/amnezia
+sudo chmod 755 /opt/amnezia
+```
+
+**Важно**: Эта директория монтируется в контейнер API через bind mount, поэтому она должна существовать на хосте до запуска docker-compose. API контейнер будет читать и записывать конфигурационные файлы AmneziaWG в эту директорию, что позволяет синхронизировать данные между API и контейнером AmneziaWG.
+
+### 4. Запуск через Docker Compose
 
 ```bash
 docker-compose up -d
@@ -56,7 +66,7 @@ docker-compose up -d
 
 API будет доступен по адресу: http://localhost:8000
 
-### 4. Применение миграций
+### 5. Применение миграций
 
 После первого запуска примените миграции БД:
 
@@ -110,18 +120,3 @@ poetry run pytest
 - **PostgreSQL**: localhost:5432
 - **Redis**: localhost:6379
 - **MinIO Console**: http://localhost:9001
-
-## Статус разработки
-
-✅ Track 1: Базовая инфраструктура и настройка окружения - завершен
-✅ Track 3: Модели базы данных и схемы - завершен
-
-### Следующие шаги
-
-- Track 2: Подключения к внешним сервисам (Redis, MinIO)
-- Track 4: Безопасность и авторизация
-- Track 5: Утилиты и сервисы
-- Track 6: AWG Service и Config Service
-- Track 7: Server API Endpoints
-- Track 8: Client API Endpoints
-- Track 9: Тестирование и документация

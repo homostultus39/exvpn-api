@@ -1,7 +1,6 @@
 from functools import lru_cache
-from typing import Optional
 
-from pydantic import Field, field_validator
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,11 +27,17 @@ class Settings(BaseSettings):
     minio_bucket_name: str = Field(default="amneziawg-configs")
     minio_use_ssl: bool = Field(default=False)
 
-    ssh_hostname: str = Field(...)
-    ssh_port: int = Field(default=22)
-    ssh_username: str = Field(...)
-    ssh_password: Optional[str] = Field(default=None)
-    ssh_private_key_path: Optional[str] = Field(default=None)
+    docker_socket_path: str = Field(default="/var/run/docker.sock")
+
+    # AWG Configuration
+    awg_config_path: str = Field(default="/opt/amnezia/awg/awg0.conf")
+    awg_container_image: str = Field(default="amneziavpn/amneziawg-go:latest")
+    awg_interface_name: str = Field(default="awg0")
+    awg_container_name: str = Field(default="amneziawg")
+
+    # Helper container configuration
+    helper_image: str = Field(default="alpine:3.19")
+    allowed_mount_paths: list[str] = Field(default=["/opt/amnezia"])
 
     admin_username: str = Field(...)
     admin_password: str = Field(...)
@@ -61,17 +66,6 @@ class Settings(BaseSettings):
     @property
     def redis_url(self) -> str:
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
-
-    @field_validator("ssh_password", "ssh_private_key_path")
-    @classmethod
-    def validate_ssh_credentials(cls, v, info):
-        if info.field_name == "ssh_password" and v is None:
-            if info.data.get("ssh_private_key_path") is None:
-                raise ValueError(
-                    "Either ssh_password or ssh_private_key_path must be provided"
-                )
-        return v
-
 
 @lru_cache
 def get_settings() -> Settings:

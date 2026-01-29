@@ -55,6 +55,9 @@ services:
       - postgres
       - redis
       - minio
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/amnezia:/opt/amnezia:rw
 
 volumes:
   postgres_data:
