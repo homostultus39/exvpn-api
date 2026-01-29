@@ -64,7 +64,7 @@ class HostService:
                 stderr=True
             )
 
-            output = await exec_instance.start(detach=False)
+            output = exec_instance.start(detach=False)
 
             stdout_data = b""
             stderr_data = b""
@@ -108,9 +108,14 @@ class HostService:
             await container.start()
 
             await container.wait()
-            logs = await container.log(stdout=True, stderr=True)
+            logs = container.log(stdout=True, stderr=True)
 
-            output = "".join([msg for msg in logs])
+            output = ""
+            async for msg in logs:
+                if isinstance(msg, (bytes, bytearray)):
+                    output += msg.decode("utf-8", errors="replace")
+                else:
+                    output += str(msg)
             return 0, output, ""
 
         except aiodocker.exceptions.DockerError as exc:

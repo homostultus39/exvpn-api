@@ -39,6 +39,8 @@ class DockerService:
 
     async def create_container(self, image: str, name: str, **kwargs) -> str:
         try:
+            if "Cmd" not in kwargs and "cmd" not in kwargs:
+                kwargs["Cmd"] = ["tail", "-f", "/dev/null"]
             config = {
                 "Image": image,
                 "HostConfig": self._build_host_config(kwargs),
@@ -80,8 +82,14 @@ class DockerService:
     async def get_container_logs(self, name: str, tail: int = 100) -> str:
         try:
             container = await self._client.containers.get(name)
-            logs = await container.log(stdout=True, stderr=True, tail=tail)
-            return "".join(logs)
+            logs = container.log(stdout=True, stderr=True, tail=tail)
+            output = ""
+            async for msg in logs:
+                if isinstance(msg, (bytes, bytearray)):
+                    output += msg.decode("utf-8", errors="replace")
+                else:
+                    output += str(msg)
+            return output
         except aiodocker.exceptions.DockerError as exc:
             if exc.status == 404:
                 raise ContainerNotFoundError(name) from exc
@@ -98,7 +106,8 @@ class DockerService:
 
     async def pull_image(self, image: str) -> None:
         try:
-            await self._client.images.pull(image)
+            async for _ in self._client.images.pull(image):
+                pass
         except aiodocker.exceptions.DockerError as exc:
             raise ImageNotFoundError(str(exc)) from exc
 
