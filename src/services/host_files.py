@@ -129,21 +129,23 @@ class HostService:
         read_err = getattr(stream, "read_err", None)
         if callable(read_out) or callable(read_err):
             while True:
-                out_chunk = await read_out() if callable(read_out) else b""
-                err_chunk = await read_err() if callable(read_err) else b""
+                out_chunk_raw = await read_out() if callable(read_out) else None
+                err_chunk_raw = await read_err() if callable(read_err) else None
+                out_chunk = self._message_to_bytes(out_chunk_raw) if out_chunk_raw else b""
+                err_chunk = self._message_to_bytes(err_chunk_raw) if err_chunk_raw else b""
                 if not out_chunk and not err_chunk:
                     break
-                stdout_data += out_chunk or b""
-                stderr_data += err_chunk or b""
+                stdout_data += out_chunk
+                stderr_data += err_chunk
             return stdout_data, stderr_data
 
         read_any = getattr(stream, "read", None)
         if callable(read_any):
             while True:
-                chunk = await read_any()
-                if not chunk:
+                chunk_raw = await read_any()
+                if not chunk_raw:
                     break
-                stdout_data += self._message_to_bytes(chunk)
+                stdout_data += self._message_to_bytes(chunk_raw)
             return stdout_data, stderr_data
 
         raise HostServiceError("Unsupported stream type returned from Docker exec")
@@ -174,23 +176,32 @@ class HostService:
         return str(logs)
 
     def _message_to_bytes(self, msg: object) -> bytes:
+        if msg is None:
+            return b""
         if isinstance(msg, (bytes, bytearray)):
             return bytes(msg)
         if isinstance(msg, str):
             return msg.encode("utf-8", errors="replace")
 
-        data = getattr(msg, "data", None)
-        if data is not None:
+        if hasattr(msg, "data"):
+            data = msg.data
             if isinstance(data, (bytes, bytearray)):
                 return bytes(data)
-            return str(data).encode("utf-8", errors="replace")
+            if isinstance(data, str):
+                return data.encode("utf-8", errors="replace")
+            if data is not None:
+                return self._message_to_bytes(data)
 
         if isinstance(msg, dict):
-            data = msg.get("data") or msg.get("stream") or msg.get("message")
-            if data is not None:
-                if isinstance(data, (bytes, bytearray)):
-                    return bytes(data)
-                return str(data).encode("utf-8", errors="replace")
+            for key in ("data", "stream", "message", "content"):
+                if key in msg:
+                    data = msg[key]
+                    if isinstance(data, (bytes, bytearray)):
+                        return bytes(data)
+                    if isinstance(data, str):
+                        return data.encode("utf-8", errors="replace")
+                    if data is not None:
+                        return self._message_to_bytes(data)
 
         return str(msg).encode("utf-8", errors="replace")
 
