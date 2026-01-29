@@ -159,6 +159,9 @@ class DockerService:
         if "restart_policy" in kwargs:
             host_config["RestartPolicy"] = kwargs["restart_policy"]
 
+        if "devices" in kwargs:
+            host_config["Devices"] = kwargs["devices"]
+
         return host_config
 
 

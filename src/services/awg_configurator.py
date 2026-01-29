@@ -60,6 +60,7 @@ class AWGService:
                 cap_add=["NET_ADMIN"],
                 volumes={"/opt/amnezia": {"bind": "/opt/amnezia", "mode": "rw"}},
                 restart_policy={"Name": "unless-stopped"},
+                devices=["/dev/net/tun:/dev/net/tun"],
             )
             await self._docker.start_container(params.container_name)
             await self._docker.wait_for_container_ready(params.container_name)
@@ -150,6 +151,15 @@ class AWGService:
 
     async def _ensure_interface_up(self, container_name: str) -> None:
         """Ensure AWG interface is up"""
+        check_tun_cmd = "test -c /dev/net/tun && echo OK || echo MISSING"
+        exit_code, tun_check, _ = await self._host.exec_in_container(
+            container_name, check_tun_cmd
+        )
+        if exit_code != 0 or "MISSING" in tun_check:
+            raise AWGServiceError(
+                "/dev/net/tun device is not available in container. "
+                "Container must be created with device mapping: /dev/net/tun:/dev/net/tun"
+            )
         command = f"sh -c \"awg-quick down {self._settings.awg_interface_name} >/dev/null 2>&1 || true; " \
                   f"awg-quick up {self._settings.awg_interface_name}\""
         exit_code, _, stderr = await self._host.exec_in_container(container_name, command)
