@@ -117,10 +117,12 @@ class HostService:
 
         if hasattr(stream, "__aiter__"):
             async for msg in stream:
-                if getattr(msg, "stream", None) == 1:
-                    stdout_data += msg.data
-                elif getattr(msg, "stream", None) == 2:
-                    stderr_data += msg.data
+                stream_id = getattr(msg, "stream", None)
+                chunk = self._message_to_bytes(msg)
+                if stream_id == 2:
+                    stderr_data += chunk
+                else:
+                    stdout_data += chunk
             return stdout_data, stderr_data
 
         read_out = getattr(stream, "read_out", None)
@@ -141,7 +143,7 @@ class HostService:
                 chunk = await read_any()
                 if not chunk:
                     break
-                stdout_data += chunk
+                stdout_data += self._message_to_bytes(chunk)
             return stdout_data, stderr_data
 
         raise HostServiceError("Unsupported stream type returned from Docker exec")
@@ -149,17 +151,14 @@ class HostService:
     async def _collect_logs_output(self, logs: object) -> str:
         if isinstance(logs, (list, tuple)):
             return "".join(
-                msg.decode("utf-8", errors="replace") if isinstance(msg, (bytes, bytearray)) else str(msg)
+                self._message_to_bytes(msg).decode("utf-8", errors="replace")
                 for msg in logs
             )
 
         if hasattr(logs, "__aiter__"):
             output = ""
             async for msg in logs:
-                if isinstance(msg, (bytes, bytearray)):
-                    output += msg.decode("utf-8", errors="replace")
-                else:
-                    output += str(msg)
+                output += self._message_to_bytes(msg).decode("utf-8", errors="replace")
             return output
 
         read_any = getattr(logs, "read", None)
@@ -169,11 +168,29 @@ class HostService:
                 chunk = await read_any()
                 if not chunk:
                     break
-                if isinstance(chunk, (bytes, bytearray)):
-                    output += chunk.decode("utf-8", errors="replace")
-                else:
-                    output += str(chunk)
+                output += self._message_to_bytes(chunk).decode("utf-8", errors="replace")
             return output
 
         return str(logs)
+
+    def _message_to_bytes(self, msg: object) -> bytes:
+        if isinstance(msg, (bytes, bytearray)):
+            return bytes(msg)
+        if isinstance(msg, str):
+            return msg.encode("utf-8", errors="replace")
+
+        data = getattr(msg, "data", None)
+        if data is not None:
+            if isinstance(data, (bytes, bytearray)):
+                return bytes(data)
+            return str(data).encode("utf-8", errors="replace")
+
+        if isinstance(msg, dict):
+            data = msg.get("data") or msg.get("stream") or msg.get("message")
+            if data is not None:
+                if isinstance(data, (bytes, bytearray)):
+                    return bytes(data)
+                return str(data).encode("utf-8", errors="replace")
+
+        return str(msg).encode("utf-8", errors="replace")
 
