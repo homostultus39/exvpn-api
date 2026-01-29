@@ -166,11 +166,40 @@ class AWGService:
                 "/dev/net/tun device is not available in container. "
                 "Container must be created with device mapping: /dev/net/tun:/dev/net/tun"
             )
-        command = f"sh -c \"awg-quick down {self._settings.awg_interface_name} >/dev/null 2>&1 || true; " \
-                  f"awg-quick up {self._settings.awg_interface_name}\""
-        exit_code, _, stderr = await self._host.exec_in_container(container_name, command)
-        if exit_code != 0:
-            raise ContainerNotRunningError(stderr or "Failed to start awg interface")
+        check_status_cmd = (
+            f"ip link show {self._settings.awg_interface_name} 2>/dev/null | "
+            f"grep -q 'state UP' && echo UP || echo DOWN"
+        )
+        exit_code, interface_status, _ = await self._host.exec_in_container(
+            container_name, check_status_cmd
+        )
+        if "UP" in interface_status:
+            return
+
+        down_cmd = (
+            f"sh -c \"awg-quick down {self._settings.awg_config_path} "
+            f">/dev/null 2>&1 || true\""
+        )
+        await self._host.exec_in_container(container_name, down_cmd)
+
+        up_cmd = f"sh -c \"awg-quick up {self._settings.awg_config_path} 2>&1\""
+        exit_code, stdout, stderr = await self._host.exec_in_container(container_name, up_cmd)
+        if exit_code == 0:
+            return
+
+        exit_code_check, status_after, _ = await self._host.exec_in_container(
+            container_name, check_status_cmd
+        )
+        if "UP" in status_after:
+            return
+
+        error_msg = (
+            f"Failed to start awg interface '{self._settings.awg_interface_name}'. "
+            f"Exit code: {exit_code}\n"
+            f"stdout: {stdout}\n"
+            f"stderr: {stderr}"
+        )
+        raise ContainerNotRunningError(error_msg)
 
     async def _configure_iptables(self, container_name: str, subnet: str) -> None:
         """Configure iptables for AWG traffic"""
