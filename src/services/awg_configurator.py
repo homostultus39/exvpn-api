@@ -60,7 +60,13 @@ class AWGService:
                 cap_add=["NET_ADMIN"],
                 volumes={"/opt/amnezia": {"bind": "/opt/amnezia", "mode": "rw"}},
                 restart_policy={"Name": "unless-stopped"},
-                devices=["/dev/net/tun:/dev/net/tun"],
+                devices=[
+                    {
+                        "PathOnHost": "/dev/net/tun",
+                        "PathInContainer": "/dev/net/tun",
+                        "CgroupPermissions": "rwm",
+                    }
+                ],
             )
             await self._docker.start_container(params.container_name)
             await self._docker.wait_for_container_ready(params.container_name)

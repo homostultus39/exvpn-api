@@ -44,7 +44,19 @@ class DockerService:
             config = {
                 "Image": image,
                 "HostConfig": self._build_host_config(kwargs),
-                **{k: v for k, v in kwargs.items() if k not in ["detach", "network_mode", "cap_add", "volumes", "restart_policy"]}
+                **{
+                    k: v
+                    for k, v in kwargs.items()
+                    if k
+                    not in [
+                        "detach",
+                        "network_mode",
+                        "cap_add",
+                        "volumes",
+                        "restart_policy",
+                        "devices",
+                    ]
+                }
             }
 
             container = await self._client.containers.create(config=config, name=name)
