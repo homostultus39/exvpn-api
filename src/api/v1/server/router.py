@@ -22,8 +22,10 @@ from src.services.awg_configurator import AWGService
 from src.services.container_manager import DockerService
 from src.services.management.exceptions import AWGServiceError, DockerServiceError
 from src.services.management.schemas import AWGSetupParams
+from src.utils.settings import get_settings
 
 router = APIRouter()
+settings = get_settings()
 
 
 @router.post("/setup", response_model=schemas.ServerSetupResponse)
@@ -50,7 +52,8 @@ async def setup_server(
         params = AWGSetupParams(
             awg_subnet_ip=request.awg_subnet_ip,
             awg_server_port=request.awg_server_port,
-            junk_packet_config=request.junk_packet_config
+            junk_packet_config=request.junk_packet_config,
+            container_name=settings.awg_container_name
         )
 
         setup_result = await awg_service.setup_server(params)

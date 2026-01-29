@@ -10,7 +10,7 @@ from src.services.management.schemas import JunkPacketConfig
 
 class ServerSetupRequest(BaseModel):
     awg_subnet_ip: str = Field(
-        ...,
+        default="10.8.1.0/24",
         pattern=r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{1,2}$",
         description="AWG subnet in CIDR format (e.g., 10.8.1.0/24)"
     )
@@ -21,7 +21,7 @@ class ServerSetupRequest(BaseModel):
         description="AWG server port"
     )
     junk_packet_config: Optional[JunkPacketConfig] = Field(
-        default=None,
+        default_factory=JunkPacketConfig,
         description="Junk packet configuration parameters"
     )
 

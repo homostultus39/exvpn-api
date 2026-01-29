@@ -102,6 +102,35 @@ class DockerService:
         except aiodocker.exceptions.DockerError as exc:
             raise ImageNotFoundError(str(exc)) from exc
 
+    async def wait_for_container_ready(self, name: str, timeout: int = 30) -> bool:
+        """Wait for container to be in running state"""
+        import asyncio
+
+        try:
+            start_time = asyncio.get_event_loop().time()
+
+            while True:
+                status = await self.get_container_status(name)
+
+                if status == "running":
+                    return True
+
+                if status is None:
+                    raise ContainerNotFoundError(name)
+
+                elapsed = asyncio.get_event_loop().time() - start_time
+                if elapsed >= timeout:
+                    raise DockerServiceError(
+                        f"Timeout waiting for container {name} to be ready. Current status: {status}"
+                    )
+
+                await asyncio.sleep(1)
+
+        except ContainerNotFoundError:
+            raise
+        except aiodocker.exceptions.DockerError as exc:
+            raise DockerServiceError(str(exc)) from exc
+
     def _build_host_config(self, kwargs: dict) -> dict:
         """Build HostConfig from kwargs for aiodocker compatibility"""
         host_config = {}

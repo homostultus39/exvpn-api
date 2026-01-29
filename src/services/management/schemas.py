@@ -48,7 +48,10 @@ class ServerConfigData(BaseModel):
 
 class AWGSetupParams(BaseModel):
     """Validation model for AWG server setup parameters"""
-    awg_subnet_ip: str = Field(..., pattern=r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{1,2}$")
-    awg_server_port: int = Field(..., ge=1, le=65535)
-    junk_packet_config: JunkPacketConfig | None = None
+    awg_subnet_ip: str = Field(
+        default="10.8.1.0/24",
+        pattern=r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{1,2}$"
+    )
+    awg_server_port: int = Field(default=55424, ge=1, le=65535)
+    junk_packet_config: JunkPacketConfig | None = Field(default_factory=JunkPacketConfig)
     container_name: str = Field(default="amneziawg", min_length=1, max_length=255)

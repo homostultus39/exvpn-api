@@ -1,4 +1,5 @@
 from typing import Optional
+from uuid import UUID
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,7 +10,7 @@ from src.database.models import ServerConfig, ServerStatus, SINGLETON_SERVER_CON
 async def get_server_config(session: AsyncSession) -> Optional[ServerConfig]:
     """Get server configuration (singleton)"""
     result = await session.execute(
-        select(ServerConfig).where(ServerConfig.id == SINGLETON_SERVER_CONFIG_ID)
+        select(ServerConfig).where(ServerConfig.id == UUID(SINGLETON_SERVER_CONFIG_ID))
     )
     return result.scalar_one_or_none()
 
@@ -29,7 +30,7 @@ async def get_or_create_server_config(
 
     if server is None:
         server = ServerConfig(
-            id=SINGLETON_SERVER_CONFIG_ID,
+            id=UUID(SINGLETON_SERVER_CONFIG_ID),
             status=ServerStatus.CONFIGURED,
             awg_subnet_ip=awg_subnet_ip,
             awg_server_port=awg_server_port,

@@ -49,7 +49,9 @@ class AWGService:
         if not await self._docker.image_exists(self._settings.awg_container_image):
             await self._docker.pull_image(self._settings.awg_container_image)
 
-        if not await self._docker.container_exists(params.container_name):
+        container_status = await self._docker.get_container_status(params.container_name)
+
+        if container_status is None:
             await self._docker.create_container(
                 image=self._settings.awg_container_image,
                 name=params.container_name,
@@ -59,8 +61,15 @@ class AWGService:
                 volumes={"/opt/amnezia": {"bind": "/opt/amnezia", "mode": "rw"}},
                 restart_policy={"Name": "unless-stopped"},
             )
-
-        await self._docker.start_container(params.container_name)
+            await self._docker.start_container(params.container_name)
+            await self._docker.wait_for_container_ready(params.container_name)
+        elif container_status == "running":
+            pass
+        elif container_status in ("restarting", "created"):
+            await self._docker.wait_for_container_ready(params.container_name)
+        else:
+            await self._docker.start_container(params.container_name)
+            await self._docker.wait_for_container_ready(params.container_name)
 
         keys = await self.generate_server_keys(params.container_name)
         server_ip, prefix = self._get_server_ip(params.awg_subnet_ip)
