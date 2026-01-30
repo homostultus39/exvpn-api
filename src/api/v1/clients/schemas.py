@@ -35,3 +35,13 @@ class ClientListResponse(BaseModel):
 class ClientConfigResponse(BaseModel):
     config: str
 
+
+class ConfigFormat(BaseModel):
+    key: str = Field(..., description="Configuration key in text format")
+    presigned_url: str = Field(..., description="Temporary presigned URL for download")
+
+
+class ClientConfigsResponse(BaseModel):
+    amnezia_app: ConfigFormat = Field(..., description="Configuration for AmneziaVPN App (vpn:// format)")
+    amnezia_wg: ConfigFormat = Field(..., description="Configuration for AmneziaWG (.conf format)")
+
