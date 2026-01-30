@@ -171,7 +171,7 @@ class ClientService:
                 errors.append(f"Failed to delete AWG config from MinIO: {str(e)}")
 
             try:
-                amnezia_key = f"configs/{client.id}_amnezia.txt"
+                amnezia_key = f"configs/{client.id}_amnezia.conf"
                 self._minio.delete_config(amnezia_key)
             except Exception as e:
                 errors.append(f"Failed to delete AmneziaVPN config from MinIO: {str(e)}")
@@ -197,7 +197,7 @@ class ClientService:
             raise ClientNotFoundServiceError(f"Client with id {client_id} not found")
 
         awg_key = f"configs/{client.id}_awg.conf"
-        amnezia_key = f"configs/{client.id}_amnezia.txt"
+        amnezia_key = f"configs/{client.id}_amnezia.conf"
 
         awg_config = self._minio.download_config(awg_key)
         amnezia_config = self._minio.download_config(amnezia_key)
