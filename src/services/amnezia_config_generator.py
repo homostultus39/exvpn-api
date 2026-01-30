@@ -81,6 +81,13 @@ class AmneziaConfigGenerator:
         return f"vpn://{compressed}"
 
     def _compress_and_encode(self, json_str: str) -> str:
-        compressed = zlib.compress(json_str.encode('utf-8'), level=8)
-        encoded = base64.urlsafe_b64encode(compressed).decode('utf-8').rstrip('=')
+        json_bytes = json_str.encode('utf-8')
+        uncompressed_size = len(json_bytes)
+        
+        compressed = zlib.compress(json_bytes, level=8)
+        
+        header = uncompressed_size.to_bytes(4, byteorder='little')
+        data_with_header = header + compressed
+        
+        encoded = base64.urlsafe_b64encode(data_with_header).decode('utf-8').rstrip('=')
         return encoded
