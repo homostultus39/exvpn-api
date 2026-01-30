@@ -116,7 +116,7 @@ async def delete_client(
         raise ClientOperationError(f"Failed to delete client: {str(exc)}")
 
 
-@router.get("/{client_id}/config", response_model=schemas.ClientConfigResponse)
+@router.get("/{client_id}/config", response_model=schemas.ClientConfigsResponse)
 async def get_client_config(
     client_id: UUID,
     current_user: CurrentUser,
@@ -124,8 +124,8 @@ async def get_client_config(
     client_service: Annotated[ClientService, Depends(get_client_service)],
 ):
     try:
-        config = await client_service.get_client_config(session, client_id)
-        return schemas.ClientConfigResponse(config=config)
+        configs = await client_service.get_client_configs(session, client_id)
+        return schemas.ClientConfigsResponse(**configs)
     except ClientNotFoundServiceError:
         raise ClientConfigNotFoundError()
     except Exception as exc:

@@ -16,6 +16,7 @@ from src.database.management.operations.client import (
 from src.database.management.operations.server_config import get_server_config
 from src.database.models import ServerConfig
 from src.minio.client import MinIOClient
+from src.services.amnezia_config_generator import AmneziaConfigGenerator
 from src.services.awg_configurator import AWGService
 from src.services.client_configurator import ConfigService
 from src.services.key_generator import KeyService
@@ -35,11 +36,13 @@ class ClientService:
         awg_service: AWGService,
         config_service: ConfigService,
         key_service: KeyService,
+        amnezia_generator: AmneziaConfigGenerator,
         minio_client: MinIOClient
     ):
         self._awg = awg_service
         self._config = config_service
         self._keys = key_service
+        self._amnezia = amnezia_generator
         self._minio = minio_client
         self._settings = get_settings()
 
@@ -96,7 +99,7 @@ class ClientService:
             raise
 
         try:
-            config_payload = self._generate_client_config(
+            awg_config_payload = self._generate_client_config(
                 client_private_key=client_private_key,
                 client_ip=next_ip,
                 psk=psk,
@@ -105,7 +108,20 @@ class ClientService:
                 server_port=server_config.awg_server_port,
                 junk_packet_config=server_config.config,
             )
-            config_key = self._minio.upload_config(str(client.id), config_payload)
+            amnezia_vpn_payload = self._generate_amnezia_vpn_config(
+                client_private_key=client_private_key,
+                client_public_key=client_public_key,
+                client_ip=next_ip,
+                psk=psk,
+                server_public_key=server_config.server_public_key,
+                server_endpoint=server_endpoint,
+                server_port=server_config.awg_server_port,
+                container_name=server_config.container_name,
+                junk_packet_config=server_config.config,
+            )
+
+            awg_config_key = self._minio.upload_config(f"{client.id}_awg", awg_config_payload)
+            amnezia_config_key = self._minio.upload_config(f"{client.id}_amnezia", amnezia_vpn_payload)
         except Exception:
             await self._rollback_awg_peer(client_public_key)
             await self._awg.sync_config(server_config.container_name)
@@ -113,9 +129,10 @@ class ClientService:
             raise
 
         try:
-            return await update_client_config_key(session, client, config_key)
+            return await update_client_config_key(session, client, awg_config_key)
         except Exception:
-            self._minio.delete_config(config_key)
+            self._minio.delete_config(awg_config_key)
+            self._minio.delete_config(amnezia_config_key)
             await self._rollback_awg_peer(client_public_key)
             await self._awg.sync_config(server_config.container_name)
             await delete_client(session, client)
@@ -148,9 +165,16 @@ class ClientService:
 
         if client.config_minio_key:
             try:
-                self._minio.delete_config(client.config_minio_key)
+                awg_key = f"configs/{client.id}_awg.conf"
+                self._minio.delete_config(awg_key)
             except Exception as e:
-                errors.append(f"Failed to delete MinIO config: {str(e)}")
+                errors.append(f"Failed to delete AWG config from MinIO: {str(e)}")
+
+            try:
+                amnezia_key = f"configs/{client.id}_amnezia.txt"
+                self._minio.delete_config(amnezia_key)
+            except Exception as e:
+                errors.append(f"Failed to delete AmneziaVPN config from MinIO: {str(e)}")
 
         await delete_client(session, client)
 
@@ -166,6 +190,31 @@ class ClientService:
     async def get_client_config_url(self, session: AsyncSession, client_id: UUID) -> str:
         client = await self._get_client_with_config(session, client_id)
         return self._minio.get_presigned_url(client.config_minio_key)
+
+    async def get_client_configs(self, session: AsyncSession, client_id: UUID) -> dict:
+        client = await get_client_by_id(session, client_id)
+        if not client:
+            raise ClientNotFoundServiceError(f"Client with id {client_id} not found")
+
+        awg_key = f"configs/{client.id}_awg.conf"
+        amnezia_key = f"configs/{client.id}_amnezia.txt"
+
+        awg_config = self._minio.download_config(awg_key)
+        amnezia_config = self._minio.download_config(amnezia_key)
+
+        awg_url = self._minio.get_presigned_url(awg_key, expires_in=3600)
+        amnezia_url = self._minio.get_presigned_url(amnezia_key, expires_in=3600)
+
+        return {
+            "amnezia_app": {
+                "key": amnezia_config,
+                "presigned_url": amnezia_url
+            },
+            "amnezia_wg": {
+                "key": awg_config,
+                "presigned_url": awg_url
+            }
+        }
 
     def _ensure_server_configured(self, server_config: ServerConfig | None) -> ServerConfig:
         if not server_config:
@@ -219,4 +268,41 @@ class ClientService:
         )
 
         return self._config.generate_client_config(client_data, server_data)
+
+    def _generate_amnezia_vpn_config(
+        self,
+        *,
+        client_private_key: str,
+        client_public_key: str,
+        client_ip: str,
+        psk: str,
+        server_public_key: str,
+        server_endpoint: str,
+        server_port: int,
+        container_name: str,
+        junk_packet_config: dict | None
+    ) -> str:
+        client_data = ClientConfigData(
+            client_private_key=client_private_key,
+            client_ip=client_ip,
+            psk=psk
+        )
+
+        junk_config = None
+        if junk_packet_config:
+            junk_config = JunkPacketConfig.model_validate(junk_packet_config)
+
+        server_data = ServerConfigData(
+            server_public_key=server_public_key,
+            server_endpoint=server_endpoint,
+            server_port=server_port,
+            junk_packet_config=junk_config
+        )
+
+        return self._amnezia.generate_amnezia_vpn_config(
+            client_data=client_data,
+            server_data=server_data,
+            client_public_key=client_public_key,
+            container_name=container_name
+        )
 
