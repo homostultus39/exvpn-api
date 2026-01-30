@@ -14,6 +14,12 @@ from src.api.v1.dependencies.auth import CurrentUser
 from src.api.v1.dependencies.services import get_client_service
 from src.database.connection import get_session
 from src.services.client_service import ClientService
+from src.services.management.exceptions import (
+    AWGServiceError,
+    ClientNotFoundServiceError,
+    ConfigServiceError,
+    ServerNotConfiguredServiceError,
+)
 
 
 router = APIRouter()
@@ -33,6 +39,8 @@ async def list_clients(
             clients=[schemas.ClientResponse.model_validate(client) for client in clients],
             total=total
         )
+    except (AWGServiceError, ConfigServiceError) as exc:
+        raise ClientOperationError(f"Service error: {str(exc)}")
     except Exception as exc:
         raise ClientOperationError(f"Failed to list clients: {str(exc)}")
 
@@ -47,8 +55,10 @@ async def create_client(
     try:
         client = await client_service.create_client(session, request.client_name)
         return schemas.ClientResponse.model_validate(client)
-    except ValueError as exc:
+    except ServerNotConfiguredServiceError as exc:
         raise ClientOperationError(str(exc))
+    except (AWGServiceError, ConfigServiceError) as exc:
+        raise ClientOperationError(f"Service error: {str(exc)}")
     except Exception as exc:
         raise ClientOperationError(f"Failed to create client: {str(exc)}")
 
@@ -62,11 +72,9 @@ async def get_client(
 ):
     try:
         client = await client_service.get_client(session, client_id)
-        if not client:
-            raise ClientNotFoundError()
         return schemas.ClientResponse.model_validate(client)
-    except ClientNotFoundError:
-        raise
+    except ClientNotFoundServiceError:
+        raise ClientNotFoundError()
     except Exception as exc:
         raise ClientOperationError(f"Failed to get client: {str(exc)}")
 
@@ -81,11 +89,9 @@ async def update_client(
 ):
     try:
         client = await client_service.update_client(session, client_id, request.client_name)
-        if not client:
-            raise ClientNotFoundError()
         return schemas.ClientResponse.model_validate(client)
-    except ClientNotFoundError:
-        raise
+    except ClientNotFoundServiceError:
+        raise ClientNotFoundError()
     except Exception as exc:
         raise ClientOperationError(f"Failed to update client: {str(exc)}")
 
@@ -98,12 +104,14 @@ async def delete_client(
     client_service: Annotated[ClientService, Depends(get_client_service)],
 ):
     try:
-        client = await client_service.delete_client(session, client_id)
-        if not client:
-            raise ClientNotFoundError()
+        await client_service.delete_client(session, client_id)
         return {"message": "Client deleted successfully"}
-    except ClientNotFoundError:
-        raise
+    except ClientNotFoundServiceError:
+        raise ClientNotFoundError()
+    except ServerNotConfiguredServiceError as exc:
+        raise ClientOperationError(str(exc))
+    except AWGServiceError as exc:
+        raise ClientOperationError(str(exc))
     except Exception as exc:
         raise ClientOperationError(f"Failed to delete client: {str(exc)}")
 
@@ -118,7 +126,7 @@ async def get_client_config(
     try:
         config = await client_service.get_client_config(session, client_id)
         return schemas.ClientConfigResponse(config=config)
-    except ValueError:
+    except ClientNotFoundServiceError:
         raise ClientConfigNotFoundError()
     except Exception as exc:
         raise ClientOperationError(f"Failed to get client config: {str(exc)}")

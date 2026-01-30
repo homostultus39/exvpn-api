@@ -45,7 +45,7 @@ SINGLETON_SERVER_CONFIG_ID = "00000000-0000-0000-0000-000000000001"
 class Client(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "clients"
 
-    client_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    unique_identifier: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     client_name: Mapped[str] = mapped_column(String(255), nullable=False)
     client_private_key: Mapped[str] = mapped_column(Text, nullable=False)
     client_public_key: Mapped[str] = mapped_column(Text, nullable=False)

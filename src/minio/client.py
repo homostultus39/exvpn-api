@@ -22,8 +22,8 @@ class MinIOClient:
         except S3Error as e:
             raise Exception(f"Failed to ensure bucket exists: {str(e)}")
 
-    def upload_config(self, client_id: str, config_content: str) -> str:
-        config_key = f"configs/{client_id}.conf"
+    def upload_config(self, unique_identifier: str, config_content: str) -> str:
+        config_key = f"configs/{unique_identifier}.conf"
         try:
             config_bytes = config_content.encode('utf-8')
             config_stream = BytesIO(config_bytes)

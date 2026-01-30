@@ -37,3 +37,15 @@ class ImageNotFoundError(ServiceError):
 class FileAccessError(ServiceError):
     pass
 
+
+class ClientServiceError(ServiceError):
+    pass
+
+
+class ClientNotFoundServiceError(ClientServiceError):
+    pass
+
+
+class ServerNotConfiguredServiceError(ClientServiceError):
+    pass
+

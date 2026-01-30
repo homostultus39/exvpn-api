@@ -15,7 +15,7 @@ class ClientUpdateRequest(BaseModel):
 
 class ClientResponse(BaseModel):
     id: UUID
-    client_id: str
+    unique_identifier: str
     client_name: str
     client_ip: str
     config_minio_key: Optional[str]
