@@ -118,6 +118,7 @@ class ClientService:
                 server_port=server_config.awg_server_port,
                 container_name=server_config.container_name,
                 junk_packet_config=server_config.config,
+                subnet_ip=server_config.awg_subnet_ip,
             )
 
             awg_config_key = self._minio.upload_config(f"{client.id}_awg", awg_config_payload)
@@ -280,7 +281,8 @@ class ClientService:
         server_endpoint: str,
         server_port: int,
         container_name: str,
-        junk_packet_config: dict | None
+        junk_packet_config: dict | None,
+        subnet_ip: str | None = None
     ) -> str:
         client_data = ClientConfigData(
             client_private_key=client_private_key,
@@ -303,5 +305,6 @@ class ClientService:
             client_data=client_data,
             server_data=server_data,
             client_public_key=client_public_key,
-            container_name=container_name
+            container_name=container_name,
+            subnet_ip=subnet_ip
         )

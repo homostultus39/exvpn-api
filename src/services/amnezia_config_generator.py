@@ -11,13 +11,15 @@ class AmneziaConfigGenerator:
         client_data: ClientConfigData,
         server_data: ServerConfigData,
         client_public_key: str,
-        container_name: str = "amnezia-awg"
+        container_name: str = "amnezia-awg",
+        subnet_ip: str | None = None
     ) -> str:
         config_dict = self._build_config_dict(
             client_data=client_data,
             server_data=server_data,
             client_public_key=client_public_key,
-            container_name=container_name
+            container_name=container_name,
+            subnet_ip=subnet_ip
         )
         return self._create_vpn_link(config_dict)
 
@@ -26,7 +28,8 @@ class AmneziaConfigGenerator:
         client_data: ClientConfigData,
         server_data: ServerConfigData,
         client_public_key: str,
-        container_name: str
+        container_name: str,
+        subnet_ip: str | None = None
     ) -> dict:
         awg_config = {
             "client_priv_key": client_data.client_private_key,
@@ -36,8 +39,13 @@ class AmneziaConfigGenerator:
             "client_ip": f"{client_data.client_ip}/32",
             "allowed_ips": "0.0.0.0/0, ::/0",
             "persistent_keep_alive": "25",
-            "port": str(server_data.server_port),  # Порт должен быть строкой в awg секции
+            "port": str(server_data.server_port),
+            "transport_proto": "udp",
         }
+        
+        if subnet_ip:
+            subnet_address = subnet_ip.split('/')[0]
+            awg_config["subnet_address"] = subnet_address
 
         if server_data.junk_packet_config:
             awg_config.update(self._build_junk_params(server_data.junk_packet_config))
