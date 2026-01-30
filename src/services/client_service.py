@@ -119,6 +119,8 @@ class ClientService:
                 container_name=server_config.container_name,
                 junk_packet_config=server_config.config,
                 subnet_ip=server_config.awg_subnet_ip,
+                wireguard_config=awg_config_payload,
+                description=client_name,
             )
 
             awg_config_key = self._minio.upload_config(f"{client.id}_awg", awg_config_payload)
@@ -282,7 +284,9 @@ class ClientService:
         server_port: int,
         container_name: str,
         junk_packet_config: dict | None,
-        subnet_ip: str | None = None
+        subnet_ip: str | None = None,
+        wireguard_config: str | None = None,
+        description: str | None = None
     ) -> str:
         client_data = ClientConfigData(
             client_private_key=client_private_key,
@@ -306,5 +310,7 @@ class ClientService:
             server_data=server_data,
             client_public_key=client_public_key,
             container_name=container_name,
-            subnet_ip=subnet_ip
+            subnet_ip=subnet_ip,
+            wireguard_config=wireguard_config,
+            description=description
         )
