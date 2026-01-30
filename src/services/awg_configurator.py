@@ -147,13 +147,20 @@ class AWGService:
 
     async def sync_config(self, container_name: str) -> None:
         """Sync AWG configuration without restart"""
+        temp_config = "/tmp/awg_sync.conf"
         command = (
-            f"sh -c \"awg-quick strip {self._settings.awg_config_path} | "
-            f"awg syncconf {self._settings.awg_interface_name} -\""
+            f"awg-quick strip {self._settings.awg_config_path} > {temp_config} && "
+            f"awg syncconf {self._settings.awg_interface_name} {temp_config} && "
+            f"rm -f {temp_config}"
         )
-        exit_code, _, stderr = await self._host.exec_in_container(container_name, command)
+        exit_code, stdout, stderr = await self._host.exec_in_container(container_name, command)
         if exit_code != 0:
-            raise AWGServiceError(f"syncconf failed: {stderr}")
+            error_msg = f"syncconf failed. Exit code: {exit_code}"
+            if stdout.strip():
+                error_msg += f", stdout: {stdout.strip()}"
+            if stderr.strip():
+                error_msg += f", stderr: {stderr.strip()}"
+            raise AWGServiceError(error_msg)
 
     async def _ensure_interface_up(self, container_name: str) -> None:
         """Ensure AWG interface is up"""
