@@ -105,7 +105,7 @@ class ClientService:
                 server_port=server_config.awg_server_port,
                 junk_packet_config=server_config.config,
             )
-            config_key = self._minio.upload_config(client_public_key, config_payload)
+            config_key = self._minio.upload_config(str(client.id), config_payload)
         except Exception:
             await self._rollback_awg_peer(client_public_key)
             await self._awg.sync_config(server_config.container_name)
