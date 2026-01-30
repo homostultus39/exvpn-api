@@ -305,4 +305,3 @@ class ClientService:
             client_public_key=client_public_key,
             container_name=container_name
         )
-

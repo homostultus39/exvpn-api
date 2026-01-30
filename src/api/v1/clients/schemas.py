@@ -44,4 +44,3 @@ class ConfigFormat(BaseModel):
 class ClientConfigsResponse(BaseModel):
     amnezia_app: ConfigFormat = Field(..., description="Configuration for AmneziaVPN App (vpn:// format)")
     amnezia_wg: ConfigFormat = Field(..., description="Configuration for AmneziaWG (.conf format)")
-

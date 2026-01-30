@@ -130,4 +130,3 @@ async def get_client_config(
         raise ClientConfigNotFoundError()
     except Exception as exc:
         raise ClientOperationError(f"Failed to get client config: {str(exc)}")
-

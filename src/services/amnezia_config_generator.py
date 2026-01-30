@@ -36,6 +36,7 @@ class AmneziaConfigGenerator:
             "client_ip": f"{client_data.client_ip}/32",
             "allowed_ips": "0.0.0.0/0, ::/0",
             "persistent_keep_alive": "25",
+            "port": str(server_data.server_port),  # Порт должен быть строкой в awg секции
         }
 
         if server_data.junk_packet_config:

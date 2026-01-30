@@ -158,4 +158,3 @@ async def deactivate_client(session: AsyncSession, client: Client) -> None:
 async def delete_client(session: AsyncSession, client: Client) -> None:
     await session.delete(client)
     await session.commit()
-
