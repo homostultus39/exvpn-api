@@ -42,23 +42,27 @@ class AmneziaConfigGenerator:
     ) -> dict:
         subnet_address = subnet_ip.split('/')[0] if subnet_ip else None
         
-        awg_config = {
-            "client_priv_key": client_data.client_private_key,
-            "client_pub_key": client_public_key,
-            "server_pub_key": server_data.server_public_key,
-            "psk_key": client_data.psk,
-            "client_ip": f"{client_data.client_ip}/32",
-            "allowed_ips": "0.0.0.0/0, ::/0",
-            "persistent_keep_alive": "25",
-            "port": str(server_data.server_port),
-            "transport_proto": "udp",
-        }
+        awg_config = {}
+        
+        if server_data.junk_packet_config:
+            junk_params = self._build_junk_params(server_data.junk_packet_config)
+            awg_config.update({
+                "H1": junk_params["H1"],
+                "H2": junk_params["H2"],
+                "H3": junk_params["H3"],
+                "H4": junk_params["H4"],
+                "Jc": junk_params["Jc"],
+                "Jmin": junk_params["Jmin"],
+                "Jmax": junk_params["Jmax"],
+                "S1": junk_params["S1"],
+                "S2": junk_params["S2"],
+            })
+        
+        awg_config["port"] = str(server_data.server_port)
+        awg_config["transport_proto"] = "udp"
         
         if subnet_address:
             awg_config["subnet_address"] = subnet_address
-
-        if server_data.junk_packet_config:
-            awg_config.update(self._build_junk_params(server_data.junk_packet_config))
         
         if wireguard_config:
             awg_config["last_config"] = self._build_last_config(
@@ -120,40 +124,41 @@ class AmneziaConfigGenerator:
     ) -> str:
         client_id = base64.b64encode(client_public_key.encode('utf-8')).decode('utf-8')
         
-        last_config_dict = {
-            "client_priv_key": client_data.client_private_key,
-            "client_pub_key": client_public_key,
-            "server_pub_key": server_data.server_public_key,
-            "psk_key": client_data.psk,
-            "client_ip": client_data.client_ip,
-            "clientId": client_id,
-            "allowed_ips": ["0.0.0.0/0", "::/0"],
-            "persistent_keep_alive": "25",
-            "port": server_data.server_port,
-            "hostName": server_data.server_endpoint,
-            "mtu": "1376",
-        }
-        
-        if subnet_address:
-            last_config_dict["subnet_address"] = subnet_address
+        last_config_dict = {}
         
         if server_data.junk_packet_config:
             junk_config = server_data.junk_packet_config
             last_config_dict.update({
-                "Jc": str(junk_config.jc),
-                "Jmin": str(junk_config.jmin),
-                "Jmax": str(junk_config.jmax),
-                "S1": str(junk_config.s1),
-                "S2": str(junk_config.s2),
                 "H1": str(junk_config.h1),
                 "H2": str(junk_config.h2),
                 "H3": str(junk_config.h3),
                 "H4": str(junk_config.h4),
+                "Jc": str(junk_config.jc),
+                "Jmax": str(junk_config.jmax),
+                "Jmin": str(junk_config.jmin),
+                "S1": str(junk_config.s1),
+                "S2": str(junk_config.s2),
             })
         
-        last_config_dict["config"] = wireguard_config
+        last_config_dict.update({
+            "allowed_ips": ["0.0.0.0/0", "::/0"],
+            "clientId": client_id,
+            "client_ip": client_data.client_ip,
+            "client_priv_key": client_data.client_private_key,
+            "client_pub_key": client_public_key,
+            "config": wireguard_config,
+            "hostName": server_data.server_endpoint,
+            "mtu": "1376",
+            "persistent_keep_alive": "25",
+            "port": server_data.server_port,
+            "psk_key": client_data.psk,
+            "server_pub_key": server_data.server_public_key,
+        })
         
-        return json.dumps(last_config_dict, separators=(',', ':'))
+        if subnet_address:
+            last_config_dict["subnet_address"] = subnet_address
+        
+        return json.dumps(last_config_dict, indent=4, ensure_ascii=False)
 
     def _create_vpn_link(self, data: dict) -> str:
         json_str = json.dumps(data, separators=(',', ':'))
