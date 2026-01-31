@@ -45,24 +45,7 @@ class AmneziaConfigGenerator:
         awg_config = {}
         
         if server_data.junk_packet_config:
-            junk_params = self._build_junk_params(server_data.junk_packet_config)
-            awg_config.update({
-                "H1": junk_params["H1"],
-                "H2": junk_params["H2"],
-                "H3": junk_params["H3"],
-                "H4": junk_params["H4"],
-                "Jc": junk_params["Jc"],
-                "Jmin": junk_params["Jmin"],
-                "Jmax": junk_params["Jmax"],
-                "S1": junk_params["S1"],
-                "S2": junk_params["S2"],
-            })
-        
-        awg_config["port"] = str(server_data.server_port)
-        awg_config["transport_proto"] = "udp"
-        
-        if subnet_address:
-            awg_config["subnet_address"] = subnet_address
+            awg_config.update(self._build_awg_junk_params(server_data.junk_packet_config))
         
         if wireguard_config:
             awg_config["last_config"] = self._build_last_config(
@@ -72,6 +55,13 @@ class AmneziaConfigGenerator:
                 wireguard_config=wireguard_config,
                 subnet_address=subnet_address
             )
+        
+        awg_config["port"] = str(server_data.server_port)
+        
+        if subnet_address:
+            awg_config["subnet_address"] = subnet_address
+        
+        awg_config["transport_proto"] = "udp"
 
         config_dict = {
             "hostName": server_data.server_endpoint,
@@ -112,6 +102,19 @@ class AmneziaConfigGenerator:
             "I3": str(junk_config.i3),
             "I4": str(junk_config.i4),
             "I5": str(junk_config.i5),
+        }
+    
+    def _build_awg_junk_params(self, junk_config: JunkPacketConfig) -> dict:
+        return {
+            "H1": str(junk_config.h1),
+            "H2": str(junk_config.h2),
+            "H3": str(junk_config.h3),
+            "H4": str(junk_config.h4),
+            "Jc": str(junk_config.jc),
+            "Jmax": str(junk_config.jmax),
+            "Jmin": str(junk_config.jmin),
+            "S1": str(junk_config.s1),
+            "S2": str(junk_config.s2),
         }
     
     def _build_last_config(

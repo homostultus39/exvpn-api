@@ -32,11 +32,16 @@ def validate_ip(ip: str) -> bool:
         return False
 
 
-def get_next_available_ip(subnet: str, existing_ips: list[str]) -> str:
+def get_next_available_ip(
+    subnet: str,
+    existing_ips: list[str],
+    excluded_ips: list[str] | None = None,
+) -> str:
     network = IPv4Network(subnet, strict=False)
     existing = {IPv4Address(ip) for ip in existing_ips if validate_ip(ip)}
+    excluded = {IPv4Address(ip) for ip in (excluded_ips or []) if validate_ip(ip)}
     for ip in network.hosts():
-        if ip not in existing:
+        if ip not in existing and ip not in excluded:
             return str(ip)
     raise ValueError("No available IPs in subnet")
 

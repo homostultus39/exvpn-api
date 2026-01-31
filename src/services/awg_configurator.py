@@ -130,7 +130,8 @@ class AWGService:
 
     def calculate_next_ip(self, subnet: str, existing_ips: list[str]) -> str:
         """Calculate next available IP in subnet"""
-        return get_next_available_ip(subnet, existing_ips)
+        server_ip, _ = self._get_server_ip(subnet)
+        return get_next_available_ip(subnet, existing_ips, [server_ip])
 
     async def add_client_peer(self, client_public_key: str, client_ip: str, psk: str) -> None:
         """Add client peer to AWG config"""
