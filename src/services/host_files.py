@@ -96,7 +96,7 @@ class HostService:
                     "Binds": [f"{k}:{v['bind']}:{v['mode']}" for k, v in volumes.items()],
                     "NetworkMode": "host",
                     "CapAdd": ["NET_ADMIN"],
-                    "AutoRemove": True
+                    "AutoRemove": False
                 }
             }
 
@@ -104,10 +104,14 @@ class HostService:
             await container.start()
 
             await container.wait()
-            logs = container.log(stdout=True, stderr=True)
-            if inspect.isawaitable(logs):
-                logs = await logs
-            output = await self._collect_logs_output(logs)
+            output = ""
+            try:
+                logs = container.log(stdout=True, stderr=True)
+                if inspect.isawaitable(logs):
+                    logs = await logs
+                output = await self._collect_logs_output(logs)
+            finally:
+                await container.delete(force=True)
             return 0, output, ""
 
         except aiodocker.exceptions.DockerError as exc:
