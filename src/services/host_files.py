@@ -84,6 +84,7 @@ class HostService:
         Security: Only mounts paths from allowed_mount_paths setting
         """
         try:
+            await self._ensure_helper_image()
             volumes = {}
             for allowed_path in self._settings.allowed_mount_paths:
                 volumes[allowed_path] = {"bind": allowed_path, "mode": "rw"}
@@ -109,6 +110,20 @@ class HostService:
             output = await self._collect_logs_output(logs)
             return 0, output, ""
 
+        except aiodocker.exceptions.DockerError as exc:
+            raise HostServiceError(str(exc)) from exc
+
+    async def _ensure_helper_image(self) -> None:
+        try:
+            await self._client.images.inspect(self._settings.helper_image)
+            return
+        except aiodocker.exceptions.DockerError as exc:
+            if exc.status != 404:
+                raise HostServiceError(str(exc)) from exc
+
+        try:
+            async for _ in self._client.images.pull(self._settings.helper_image):
+                pass
         except aiodocker.exceptions.DockerError as exc:
             raise HostServiceError(str(exc)) from exc
 
