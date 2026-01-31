@@ -211,13 +211,31 @@ class AWGService:
 
     async def _configure_iptables(self, container_name: str, subnet: str) -> None:
         """Configure iptables for AWG traffic"""
+        masq_check = (
+            f"iptables -t nat -C POSTROUTING -s {subnet} -o eth0 -j MASQUERADE "
+            "2>/dev/null || true"
+        )
+        masq_add = f"iptables -t nat -I POSTROUTING 1 -s {subnet} -o eth0 -j MASQUERADE"
+
+        forward_in_check = (
+            f"iptables -C FORWARD -i {self._settings.awg_interface_name} -j ACCEPT "
+            "2>/dev/null || true"
+        )
+        forward_in_add = f"iptables -I FORWARD 1 -i {self._settings.awg_interface_name} -j ACCEPT"
+
+        forward_out_check = (
+            f"iptables -C FORWARD -o {self._settings.awg_interface_name} -j ACCEPT "
+            "2>/dev/null || true"
+        )
+        forward_out_add = f"iptables -I FORWARD 1 -o {self._settings.awg_interface_name} -j ACCEPT"
+
         commands = [
-            f"iptables -t nat -A POSTROUTING -s {subnet} -o eth0 -j MASQUERADE",
-            f"iptables -A FORWARD -i {self._settings.awg_interface_name} -j ACCEPT",
-            f"iptables -A FORWARD -o {self._settings.awg_interface_name} -j ACCEPT",
+            f"({masq_check}) || ({masq_add})",
+            f"({forward_in_check}) || ({forward_in_add})",
+            f"({forward_out_check}) || ({forward_out_add})",
         ]
         command = "sh -c \"" + " && ".join(commands) + "\""
-        exit_code, _, stderr = await self._host.exec_in_container(container_name, command)
+        exit_code, _, stderr = await self._host.execute_on_host(command)
         if exit_code != 0:
             raise AWGServiceError(f"iptables configuration failed: {stderr}")
 

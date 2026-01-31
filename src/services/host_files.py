@@ -94,6 +94,7 @@ class HostService:
                 "HostConfig": {
                     "Binds": [f"{k}:{v['bind']}:{v['mode']}" for k, v in volumes.items()],
                     "NetworkMode": "host",
+                    "CapAdd": ["NET_ADMIN"],
                     "AutoRemove": True
                 }
             }
