@@ -122,8 +122,15 @@ class HostService:
                 raise HostServiceError(str(exc)) from exc
 
         try:
-            async for _ in self._client.images.pull(self._settings.helper_image):
-                pass
+            pull_result = self._client.images.pull(self._settings.helper_image)
+            if inspect.isawaitable(pull_result):
+                pull_result = await pull_result
+
+            if hasattr(pull_result, "__aiter__"):
+                async for _ in pull_result:
+                    pass
+            elif isinstance(pull_result, (list, tuple)):
+                return
         except aiodocker.exceptions.DockerError as exc:
             raise HostServiceError(str(exc)) from exc
 
