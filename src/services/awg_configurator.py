@@ -211,28 +211,30 @@ class AWGService:
 
     async def _configure_iptables(self, container_name: str, subnet: str) -> None:
         """Configure iptables for AWG traffic"""
-        masq_check = (
-            f"iptables -t nat -C POSTROUTING -s {subnet} -o eth0 -j MASQUERADE "
-            "2>/dev/null || true"
+        cleanup_forward_in = (
+            f"while iptables -D FORWARD -i {self._settings.awg_interface_name} -j ACCEPT "
+            "2>/dev/null; do :; done"
         )
+        cleanup_forward_out = (
+            f"while iptables -D FORWARD -o {self._settings.awg_interface_name} -j ACCEPT "
+            "2>/dev/null; do :; done"
+        )
+        cleanup_masq = (
+            f"while iptables -t nat -D POSTROUTING -s {subnet} -o eth0 -j MASQUERADE "
+            "2>/dev/null; do :; done"
+        )
+
+        forward_in_add = f"iptables -I FORWARD 1 -i {self._settings.awg_interface_name} -j ACCEPT"
+        forward_out_add = f"iptables -I FORWARD 1 -o {self._settings.awg_interface_name} -j ACCEPT"
         masq_add = f"iptables -t nat -I POSTROUTING 1 -s {subnet} -o eth0 -j MASQUERADE"
 
-        forward_in_check = (
-            f"iptables -C FORWARD -i {self._settings.awg_interface_name} -j ACCEPT "
-            "2>/dev/null || true"
-        )
-        forward_in_add = f"iptables -I FORWARD 1 -i {self._settings.awg_interface_name} -j ACCEPT"
-
-        forward_out_check = (
-            f"iptables -C FORWARD -o {self._settings.awg_interface_name} -j ACCEPT "
-            "2>/dev/null || true"
-        )
-        forward_out_add = f"iptables -I FORWARD 1 -o {self._settings.awg_interface_name} -j ACCEPT"
-
         commands = [
-            f"({masq_check}) || ({masq_add})",
-            f"({forward_in_check}) || ({forward_in_add})",
-            f"({forward_out_check}) || ({forward_out_add})",
+            cleanup_forward_in,
+            cleanup_forward_out,
+            cleanup_masq,
+            forward_in_add,
+            forward_out_add,
+            masq_add,
         ]
         command = "sh -c \"" + " && ".join(commands) + "\""
         exit_code, _, stderr = await self._host.execute_on_host(command)
