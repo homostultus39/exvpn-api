@@ -11,7 +11,7 @@ class AmneziaConfigGenerator:
         client_data: ClientConfigData,
         server_data: ServerConfigData,
         client_public_key: str,
-        container_name: str = "amnezia-awg",
+        container_name: str = "amneziawg",
         subnet_ip: str | None = None,
         wireguard_config: str | None = None,
         description: str | None = None,
