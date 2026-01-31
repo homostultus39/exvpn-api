@@ -25,6 +25,7 @@ exvpn-api/
 - Python 3.13+
 - Poetry
 - Docker & Docker Compose
+- SSH доступ к серверу (нужен клиенту AmneziaVPN для проверки установленных контейнеров)
 
 ## Установка и запуск
 
@@ -63,6 +64,14 @@ sudo chmod 755 /opt/amnezia
 ```bash
 docker-compose up -d
 ```
+
+### 4.1. Требования для подключения из AmneziaVPN
+
+Клиент AmneziaVPN использует SSH для проверки установленных контейнеров и чтения конфигурации сервера. Убедитесь, что:
+
+- На сервере доступен SSH.
+- Есть пользователь с правами на выполнение `docker ps`, `docker inspect`, `docker exec` через `sudo` без пароля.
+- Контейнер AmneziaWG имеет имя `amnezia-awg` (это имя используется клиентом).
 
 API будет доступен по адресу: http://localhost:8000
 

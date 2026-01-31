@@ -29,14 +29,12 @@ class Settings(BaseSettings):
 
     docker_socket_path: str = Field(default="/var/run/docker.sock")
 
-    # AWG Configuration
     awg_config_path: str = Field(default="/opt/amnezia/awg/awg0.conf")
     awg_container_image: str = Field(default="amneziavpn/amneziawg-go:latest")
     awg_interface_name: str = Field(default="awg0")
-    awg_container_name: str = Field(default="amneziawg")
+    awg_container_name: str = Field(default="amnezia-awg")
     awg_server_endpoint: str = Field(default="")
 
-    # Helper container configuration
     helper_image: str = Field(default="alpine:3.19")
     allowed_mount_paths: list[str] = Field(default=["/opt/amnezia"])
 

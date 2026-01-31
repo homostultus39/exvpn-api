@@ -54,4 +54,4 @@ class AWGSetupParams(BaseModel):
     )
     awg_server_port: int = Field(default=55424, ge=1, le=65535)
     junk_packet_config: JunkPacketConfig | None = Field(default_factory=JunkPacketConfig)
-    container_name: str = Field(default="amneziawg", min_length=1, max_length=255)
+    container_name: str = Field(default="amnezia-awg", min_length=1, max_length=255)
